@@ -53,7 +53,7 @@ func main() {
 			Bucket: aws.String(args[i]),
 			Key:    aws.String(args[i+1]),
 		})
-		urlStr, err := req.Presign(15 * 24 * time.Hour)
+		urlStr, err := req.Presign(5 * 24 * time.Hour)
 
 		if err != nil {
 			log.Println("Failed to sign request", err)
