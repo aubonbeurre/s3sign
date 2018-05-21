@@ -14,6 +14,7 @@ import (
 
 var gOpts struct {
 	Verbose []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
+	List    string `short:"l" long:"list" description:"List bucket content"`
 }
 
 var parser = flags.NewParser(&gOpts, flags.Default)
@@ -46,6 +47,18 @@ func main() {
 
 	// Create S3 service client
 	svc := s3.New(sess)
+
+	if len(gOpts.List) > 0 {
+		params := &s3.ListObjectsInput{
+			Bucket: aws.String(gOpts.List),
+		}
+
+		resp, _ := svc.ListObjects(params)
+		for _, key := range resp.Contents {
+			fmt.Println(*key.Key)
+		}
+
+	}
 
 	for i := 0; i < len(args); i += 2 {
 
