@@ -81,6 +81,22 @@ func makeAWSSession() (sess *session.Session, err error) {
 	return session.NewSession(cfg)
 }
 
+func parsePrefix(s string) (params *s3.ListObjectsV2Input) {
+	if strings.Contains(gOpts.Download, "/") {
+		ar := strings.Split(gOpts.Download, "/")
+		prefix := strings.Join(ar[1:], "/") + "/"
+		params = &s3.ListObjectsV2Input{
+			Bucket: &ar[0],
+			Prefix: &prefix,
+		}
+	} else {
+		params = &s3.ListObjectsV2Input{
+			Bucket: &gOpts.Download,
+		}
+	}
+	return params
+}
+
 // Downloads an item from an S3 Bucket
 //
 // Usage:
@@ -116,9 +132,7 @@ func main() {
 	}
 
 	if len(gOpts.List) > 0 {
-		params := &s3.ListObjectsV2Input{
-			Bucket: aws.String(gOpts.List),
-		}
+		params := parsePrefix(gOpts.List)
 
 		if err = svc.ListObjectsV2Pages(params, func(resp *s3.ListObjectsV2Output, lastPage bool) bool {
 			for _, key := range resp.Contents {
@@ -132,9 +146,7 @@ func main() {
 	}
 
 	if len(gOpts.Download) > 0 {
-		params := &s3.ListObjectsV2Input{
-			Bucket: aws.String(gOpts.Download),
-		}
+		params := parsePrefix(gOpts.Download)
 
 		if err = svc.ListObjectsV2Pages(params, func(resp *s3.ListObjectsV2Output, lastPage bool) bool {
 			for _, key := range resp.Contents {
@@ -164,9 +176,18 @@ func main() {
 			}
 			root := filepath.Dir(arg)
 			for _, f := range fileNames {
-				path := f[len(root)+1:]
+				var path string
+				if root != "." {
+					path = f[len(root)+1:]
+				} else {
+					path = f
+				}
 				log.Printf("%s %s", filepath.Dir(path), filepath.Base(path))
-				bucket := gOpts.Upload + "/" + filepath.Dir(path) + "/"
+				var prefix string = ""
+				if filepath.Dir(path) != "." {
+					prefix = filepath.Dir(path) + "/"
+				}
+				bucket := gOpts.Upload + "/" + prefix
 				bucket = strings.Replace(bucket, "\\", "/", -1)
 				if err = Upload(sess, bucket, filepath.Base(path), f, ""); err != nil {
 					panic(err)
