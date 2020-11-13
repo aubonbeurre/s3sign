@@ -13,7 +13,7 @@ import (
 // Upload uploads the given filename to s3.
 func Upload(sess *session.Session, bucketname, objectkey, filename string, kmskey string) error {
 	uploader := s3manager.NewUploader(sess, func(u *s3manager.Uploader) {
-		u.Concurrency = 20
+		u.Concurrency = 10
 	})
 
 	f, err := os.Open(filename)

@@ -14,7 +14,7 @@ import (
 // Download downloads the given objectkey from s3
 func Download(sess *session.Session, bucketname, objectkey, filename string) (err error) {
 	downloader := s3manager.NewDownloader(sess, func(d *s3manager.Downloader) {
-		d.Concurrency = 20
+		d.Concurrency = 10
 	})
 
 	// Create a file to write the S3 Object contents to.
