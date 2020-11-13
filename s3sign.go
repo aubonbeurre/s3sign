@@ -82,8 +82,8 @@ func makeAWSSession() (sess *session.Session, err error) {
 }
 
 func parsePrefix(s string) (params *s3.ListObjectsV2Input) {
-	if strings.Contains(gOpts.Download, "/") {
-		ar := strings.Split(gOpts.Download, "/")
+	if strings.Contains(s, "/") {
+		ar := strings.Split(s, "/")
 		prefix := strings.Join(ar[1:], "/") + "/"
 		params = &s3.ListObjectsV2Input{
 			Bucket: &ar[0],
@@ -91,7 +91,7 @@ func parsePrefix(s string) (params *s3.ListObjectsV2Input) {
 		}
 	} else {
 		params = &s3.ListObjectsV2Input{
-			Bucket: &gOpts.Download,
+			Bucket: &s,
 		}
 	}
 	return params
@@ -157,7 +157,11 @@ func main() {
 				fmt.Println(*key.Key)
 				dir := filepath.Dir(*key.Key)
 				os.MkdirAll(dir, 0600)
-				if err = Download(sess, gOpts.Download, *key.Key, *key.Key); err != nil {
+				bucket := gOpts.Download
+				if strings.Contains(bucket, "/") {
+					bucket = strings.Split(bucket, "/")[0]
+				}
+				if err = Download(sess, bucket, *key.Key, *key.Key); err != nil {
 					panic(err)
 				}
 			}
