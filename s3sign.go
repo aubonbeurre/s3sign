@@ -21,6 +21,7 @@ var gOpts struct {
 	List    string `short:"l" long:"list" description:"List bucket content"`
 	Upload  string `short:"u" long:"upload" description:"Upload dir to bucket"`
 	Delete  string `short:"d" long:"delete" description:"Delete bucket"`
+	Region  string `short:"r" long:"region" description:"Region bucket" default:"eu-west-1"`
 }
 
 var parser = flags.NewParser(&gOpts, flags.Default)
@@ -68,7 +69,7 @@ func deleteAllBucket(sess *session.Session, bucketName string) error {
 
 func makeAWSSession() (sess *session.Session, err error) {
 	cfg := aws.NewConfig()
-	cfg.Region = aws.String("eu-west-3")
+	cfg.Region = aws.String(gOpts.Region)
 	if len(gOpts.Verbose) > 0 {
 		cfg.WithCredentialsChainVerboseErrors(true)
 	}
@@ -117,9 +118,13 @@ func main() {
 			Bucket: aws.String(gOpts.List),
 		}
 
-		resp, _ := svc.ListObjects(params)
-		for _, key := range resp.Contents {
-			fmt.Println(*key.Key)
+		var resp *s3.ListObjectsOutput
+		if resp, err = svc.ListObjects(params); err != nil {
+			log.Println(err.Error())
+		} else {
+			for _, key := range resp.Contents {
+				fmt.Println(*key.Key)
+			}
 		}
 	}
 
