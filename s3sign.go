@@ -17,11 +17,12 @@ import (
 )
 
 var gOpts struct {
-	Verbose []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
-	List    string `short:"l" long:"list" description:"List bucket content"`
-	Upload  string `short:"u" long:"upload" description:"Upload dir to bucket"`
-	Delete  string `short:"d" long:"delete" description:"Delete bucket"`
-	Region  string `short:"r" long:"region" description:"Region bucket" default:"eu-west-1"`
+	Verbose  []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
+	List     string `short:"l" long:"list" description:"List bucket content"`
+	Upload   string `short:"u" long:"upload" description:"Upload dir to bucket"`
+	Delete   string `short:"D" long:"delete" description:"Delete bucket"`
+	Download string `short:"d" long:"download" description:"Download bucket"`
+	Region   string `short:"r" long:"region" description:"Region bucket" default:"eu-west-1"`
 }
 
 var parser = flags.NewParser(&gOpts, flags.Default)
@@ -95,6 +96,7 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	log.SetOutput(os.Stdout)
 
 	// Initialize a session in us-west-2 that the SDK will use to load
 	// credentials from the shared credentials file ~/.aws/credentials.
@@ -114,18 +116,44 @@ func main() {
 	}
 
 	if len(gOpts.List) > 0 {
-		params := &s3.ListObjectsInput{
+		params := &s3.ListObjectsV2Input{
 			Bucket: aws.String(gOpts.List),
 		}
 
-		var resp *s3.ListObjectsOutput
-		if resp, err = svc.ListObjects(params); err != nil {
-			log.Println(err.Error())
-		} else {
+		if err = svc.ListObjectsV2Pages(params, func(resp *s3.ListObjectsV2Output, lastPage bool) bool {
 			for _, key := range resp.Contents {
 				fmt.Println(*key.Key)
 			}
+			return true
+		}); err != nil {
+			panic(err)
 		}
+		return
+	}
+
+	if len(gOpts.Download) > 0 {
+		params := &s3.ListObjectsV2Input{
+			Bucket: aws.String(gOpts.Download),
+		}
+
+		if err = svc.ListObjectsV2Pages(params, func(resp *s3.ListObjectsV2Output, lastPage bool) bool {
+			for _, key := range resp.Contents {
+				if info, err := os.Stat(*key.Key); !os.IsNotExist(err) && !info.IsDir() {
+					log.Printf("Skipping %s", *key.Key)
+					continue
+				}
+				fmt.Println(*key.Key)
+				dir := filepath.Dir(*key.Key)
+				os.MkdirAll(dir, 0600)
+				if err = Download(sess, gOpts.Download, *key.Key, *key.Key); err != nil {
+					panic(err)
+				}
+			}
+			return true
+		}); err != nil {
+			panic(err)
+		}
+		return
 	}
 
 	if len(gOpts.Upload) > 0 {
